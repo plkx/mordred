@@ -3,18 +3,18 @@ from __future__ import print_function
 import os
 import sys
 import time
-import subprocess
 import threading
-try:
-    from tempfile import TemporaryDirectory
-except ImportError:
-    from backports.tempfile import TemporaryDirectory
-
+import subprocess
 
 from rdkit.Chem import rdForceFieldHelpers
 
 from .parser import parse_output, get_dipole_from_arc
 from .generate import generate_mopac_input
+
+try:
+    from tempfile import TemporaryDirectory
+except ImportError:
+    from backports.tempfile import TemporaryDirectory
 
 
 def get_mopac_path():
