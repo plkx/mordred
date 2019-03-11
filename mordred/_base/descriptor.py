@@ -60,6 +60,9 @@ class Descriptor(six.with_metaclass(DescriptorMeta, object)):
     require_connected = False
     require_3D = False
 
+    def _get_state_key(self):
+        return bool(self.explicit_hydrogens), bool(self.kekulize), bool(self.require_3D)
+
     def __reduce_ex__(self, version):
         return self.__class__, self.parameters()
 

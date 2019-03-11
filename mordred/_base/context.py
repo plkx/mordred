@@ -1,3 +1,5 @@
+from copy import copy
+
 from rdkit import Chem
 
 from .._util import conformer_to_numpy
@@ -5,24 +7,21 @@ from ..error import Missing3DCoordinate
 
 
 class Context(object):
-    __slots__ = "_mols", "_coords", "n_frags", "name", "_stack"
+    __slots__ = "_mol_coords", "n_frags", "name", "_stack"
 
-    def __init__(self, mols, coords, n_frags, name):
-        self._mols = mols
-        self._coords = coords
+    def __init__(self, mol_coords, n_frags, name):
+        self._mol_coords = mol_coords
         self.n_frags = n_frags
         self.name = name
 
     def __reduce_ex__(self, version):
-        return self.__class__, (self._mols, self._coords, self.n_frags, self.name)
+        return self.__class__, (self._mol_coords, self.n_frags, self.name)
 
     def __str__(self):
         return self.name
 
-    __tf = {True, False}
-
     @classmethod
-    def from_query(cls, mol, require_3D, explicit_hydrogens, kekulizes, id):
+    def from_query(cls, mol, mol_states, id):
         if not isinstance(mol, Chem.Mol):
             raise TypeError("{!r} is not rdkit.Chem.Mol instance".format(mol))
 
@@ -33,39 +32,53 @@ class Context(object):
         else:
             name = Chem.MolToSmiles(Chem.RemoveHs(mol, updateExplicitCount=True))
 
-        mols, coords = {}, {}
+        mol_coords = {}
+        num_imp_hs = sum(a.GetNumImplicitHs() for a in mol.GetAtoms())
 
-        for eh, ke in ((eh, ke) for eh in explicit_hydrogens for ke in kekulizes):
-            m = Chem.AddHs(mol) if eh else Chem.RemoveHs(mol, updateExplicitCount=True)
+        for state in mol_states:
+            eh, ke, r3d = state
+            added = False
+            if eh and num_imp_hs > 0:
+                added = True
+                m = Chem.AddHs(mol)
+            elif not eh:
+                m = Chem.RemoveHs(mol, updateExplicitCount=True)
+            else:
+                m = copy(mol)
+
+            coord = None
+            try:
+                conf = m.GetConformer(id)
+            except ValueError:
+                pass
+            else:
+                if r3d and not added and conf.Is3D():
+                    coord = conformer_to_numpy(conf)
 
             if ke:
                 Chem.Kekulize(m)
-
-            if require_3D:
-                try:
-                    conf = m.GetConformer(id)
-                    if conf.Is3D():
-                        coords[eh, ke] = conformer_to_numpy(conf)
-                except ValueError:
-                    pass
+            else:
+                Chem.SanitizeMol(m)
 
             m.RemoveAllConformers()
-            mols[eh, ke] = m
+            mol_coords[state] = m, coord
 
-        return cls(mols, coords, n_frags, name)
+        return cls(mol_coords, n_frags, name)
 
     @classmethod
     def from_calculator(cls, calc, mol, id):
-        return cls.from_query(mol, calc._require_3D, calc._explicit_hydrogens, calc._kekulizes, id)
+        return cls.from_query(mol, calc._mol_states, id)
 
     def get_coord(self, desc):
-        try:
-            return self._coords[desc.explicit_hydrogens, desc.kekulize]
-        except KeyError:
-            desc.fail(Missing3DCoordinate())
+        _, crd = self._mol_coords[desc._get_state_key()]
+        if crd is None:
+            return desc.fail(Missing3DCoordinate())
+
+        return crd
 
     def get_mol(self, desc):
-        return self._mols[desc.explicit_hydrogens, desc.kekulize]
+        mol, _ = self._mol_coords[desc._get_state_key()]
+        return mol
 
     def reset(self):
         self._stack = []

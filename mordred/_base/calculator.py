@@ -11,7 +11,6 @@ from .result import Result
 from .._util import Capture, DummyBar
 from ..error import Error, Missing, MultipleFragments, DuplicatedDescriptorName
 from .context import Context
-from .._version import __version__
 from .descriptor import Descriptor, MissingValueException, is_descriptor_class
 
 try:
@@ -31,16 +30,13 @@ class Calculator(object):
     """
 
     __slots__ = (
-        "_descriptors", "_name_dict", "_explicit_hydrogens", "_kekulizes", "_require_3D",
-        "_cache", "_debug", "_progress_bar",
+        "_descriptors", "_name_dict", "_mol_states", "_cache", "_debug", "_progress_bar",
     )
 
     def __setstate__(self, dict):
         ds = self._descriptors = dict.get("_descriptors", [])
         self._name_dict = {str(d): d for d in ds}
-        self._explicit_hydrogens = dict.get("_explicit_hydrogens", {True, False})
-        self._kekulizes = dict.get("_kekulizes", {True, False})
-        self._require_3D = dict.get("_require_3D", False)
+        self._mol_states = dict.get("_mol_states", set())
 
     @classmethod
     def from_json(cls, obj):
@@ -81,9 +77,7 @@ class Calculator(object):
     def __reduce_ex__(self, version):
         return self.__class__, (), {
             "_descriptors": self._descriptors,
-            "_explicit_hydrogens": self._explicit_hydrogens,
-            "_kekulizes": self._kekulizes,
-            "_require_3D": self._require_3D,
+            "_mol_states": self._mol_states,
         }
 
     def __getitem__(self, key):
@@ -96,9 +90,7 @@ class Calculator(object):
         self._descriptors = []
         self._name_dict = {}
 
-        self._explicit_hydrogens = set()
-        self._kekulizes = set()
-        self._require_3D = False
+        self._mol_states = set()
         self._debug = False
 
         self.register(descs, version=version, ignore_3D=ignore_3D)
@@ -124,9 +116,7 @@ class Calculator(object):
     def descriptors(self):
         self._descriptors = []
         self._name_dict = {}
-        self._explicit_hydrogens.clear()
-        self._kekulizes.clear()
-        self._require_3D = False
+        self._mol_states.clear()
 
     def __len__(self):
         return len(self._descriptors)
@@ -138,9 +128,7 @@ class Calculator(object):
         if ignore_3D and desc.require_3D:
             return
 
-        self._explicit_hydrogens.add(bool(desc.explicit_hydrogens))
-        self._kekulizes.add(bool(desc.kekulize))
-        self._require_3D |= desc.require_3D
+        self._mol_states.add(desc._get_state_key())
 
         for dep in (desc.dependencies() or {}).values():
             if isinstance(dep, Descriptor):
@@ -171,9 +159,10 @@ class Calculator(object):
 
         """
         if version is None:
-            version = __version__
+            version = StrictVersion("{}.{}.{}".format(sys.maxsize, sys.maxsize, sys.maxsize))
+        elif not isinstance(version, StrictVersion):
+            version = StrictVersion(version)
 
-        version = StrictVersion(version)
         return self._register(desc, version, ignore_3D)
 
     def _register(self, desc, version, ignore_3D):
