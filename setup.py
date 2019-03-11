@@ -12,6 +12,7 @@ install_requires = [
 
 if sys.version_info < (3, 4, 0):
     install_requires.append("enum34")
+    install_requires.append("backports.tempfile")
 
 
 def get_version():

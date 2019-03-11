@@ -4,7 +4,11 @@ import os
 import sys
 import time
 import subprocess
-from tempfile import TemporaryDirectory
+try:
+    from tempfile import TemporaryDirectory
+except ImportError:
+    from backports.tempfile import TemporaryDirectory
+
 
 from rdkit.Chem import rdForceFieldHelpers
 

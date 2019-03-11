@@ -8,7 +8,7 @@
     'mordred.ABCIndex'
 
     >>> len(descriptors.all)  # all descriptor modules
-    50
+    51
 
     >>> calc = Calculator(descriptors) # all descriptors
 """
