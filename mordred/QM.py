@@ -1,7 +1,7 @@
 from .mopac.calculate import calc_energy
 from ._base.descriptor import Descriptor
 
-__all__ = ("Mopac",)
+__all__ = ("QM",)
 
 
 class MopacCache(Descriptor):
@@ -33,7 +33,9 @@ type_to_attr = {
 }
 
 
-class Mopac(Descriptor):
+class QM(Descriptor):
+    """Quantum Mechanics descriptor."""
+
     types = {
         "dipole": "dipole moment",
         "E": "total energy (kcal/mol)",
@@ -70,7 +72,7 @@ class Mopac(Descriptor):
     def calculate(self, result):
         return getattr(result, type_to_attr[self._type])
 
-    def __init__(self, hamiltonian="AM1", type="total_energy", timeout=60):
+    def __init__(self, hamiltonian="AM1", type="E", timeout=60):
         self._hamiltonian = hamiltonian
         self._type = type
         self._timeout = timeout

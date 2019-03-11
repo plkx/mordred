@@ -4,6 +4,7 @@ import os
 import sys
 import time
 import subprocess
+import threading
 try:
     from tempfile import TemporaryDirectory
 except ImportError:
@@ -23,6 +24,25 @@ def get_mopac_path():
         return "run_mopac7"
 
 
+def sentinel(proc):
+    proc.kill()
+
+
+def run_process(cmd, cwd=None, timeout=None):
+    v = sys.version_info.major, sys.version_info.minor
+    if v >= (3, 5):
+        subprocess.run(
+            cmd, cwd=cwd, stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL, timeout=timeout)
+    else:
+        null = open(os.devnull, "w")
+        proc = subprocess.Popen(cmd, cwd=cwd, stdout=null, stderr=null)
+        th = threading.Timer(timeout, sentinel, args=(proc,))
+        th.start()
+        proc.wait()
+        th.cancel()
+
+
 def calculate(mol, condition="PM3 XYZ MMOK", confId=-1, timeout=None, executable=None):
     if sum(a.GetNumImplicitHs() for a in mol.GetAtoms()) != 0:
         raise ValueError("mol has implicit hydrogens")
@@ -33,8 +53,7 @@ def calculate(mol, condition="PM3 XYZ MMOK", confId=-1, timeout=None, executable
     with TemporaryDirectory() as d:
         with open(os.path.join(d, "mol.dat"), "w") as i:
             generate_mopac_input(mol, i, condition=condition, confId=confId)
-            subprocess.run(
-                [executable, "mol"], cwd=d, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            run_process([executable, "mol"], cwd=d, timeout=timeout)
             result = parse_output(open(os.path.join(d, "mol.OUT"), "r"))
             result.dipole = get_dipole_from_arc(open(os.path.join(d, "mol.arc"), "r"))
 
