@@ -26,7 +26,7 @@ fi
 hash -r
 
 info conda config --set always_yes yes --set changeps1 no
-info conda config --add channels rdkit
+info conda config --add channels rdkit --add channels mordred-descriptor
 info conda update -y --all
 
 info conda install python=$PYTHON_VERSION

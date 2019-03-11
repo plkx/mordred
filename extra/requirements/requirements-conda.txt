@@ -3,6 +3,7 @@ six
 numpy
 tqdm
 pandas
+mopac7
 
 pyyaml
 nose
