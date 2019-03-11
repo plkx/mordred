@@ -1,6 +1,5 @@
 import re
 
-
 regexes = [
     ("heat_of_formation", float, re.compile(r"\s*FINAL HEAT OF FORMATION\s*=\s*(-?[0-9.]+)")),
     ("total_energy", float, re.compile(r"\s*TOTAL ENERGY\s*=\s*(-?[0-9.]+)")),
@@ -9,6 +8,42 @@ regexes = [
     ("ionization_potential", float, re.compile(r"\s*IONIZATION POTENTIAL\s*=\s*(-?[0-9.]+)")),
     ("num_of_filled_levels", int, re.compile(r"\s*NO. OF FILLED LEVELS\s*=\s*(-?[0-9.]+)")),
 ]
+
+
+class Result(object):
+    __slots__ = (
+        "heat_of_formation",
+        "total_energy",
+        "electronic_energy",
+        "core_core_repulsion",
+        "ionization_potential",
+        "num_of_filled_levels",
+        "eigenvalues",
+        "coordinates",
+        "dipole",
+    )
+
+    @property
+    def occupied_molecular_orbitals(self):
+        return self.eigenvalues[:self.num_of_filled_levels]
+
+    @property
+    def unoccupied_molecular_orbitals(self):
+        return self.eigenvalues[self.num_of_filled_levels:]
+
+    @property
+    def homo(self):
+        return max(self.occupied_molecular_orbitals)
+
+    @property
+    def lumo(self):
+        return min(self.unoccupied_molecular_orbitals)
+
+    def to_object(self):
+        o = {v: getattr(self, v) for v in self.__slots__ if hasattr(self, v)}
+        o["homo"] = self.homo
+        o["lumo"] = self.lumo
+        return o
 
 
 def skip_to(s, it):
@@ -24,7 +59,7 @@ def skip(n, it):
 
 def parse_output(fp, eigenvalues=True, coordinates=True):
     i = 0
-    result = {}
+    result = Result()
 
     with fp:
         it = iter(fp)
@@ -32,13 +67,13 @@ def parse_output(fp, eigenvalues=True, coordinates=True):
             name, conv, regex = regexes[i]
             matched = regex.match(line)
             if matched is not None:
-                result[name] = conv(matched.group(1))
+                setattr(result, name, conv(matched.group(1)))
                 i += 1
                 if i >= len(regexes):
                     break
 
         if eigenvalues:
-            skip_to('EIGENVALUES', it)
+            skip_to("EIGENVALUES", it)
             skip(1, it)
 
             evs = []
@@ -50,10 +85,10 @@ def parse_output(fp, eigenvalues=True, coordinates=True):
                 for i in range(int(len(line) // 10)):
                     evs.append(float(line[10 * i:10 * (i + 1)]))
 
-            result['eigenvalues'] = evs
+            result.eigenvalues = evs
 
         if coordinates:
-            skip_to('CARTESIAN COORDINATES', it)
+            skip_to("CARTESIAN COORDINATES", it)
             skip(3, it)
 
             crd = []
@@ -64,7 +99,7 @@ def parse_output(fp, eigenvalues=True, coordinates=True):
 
                 crd.append([float(line[30:40]), float(line[40:50]), float(line[50:60])])
 
-            result['coordinates'] = crd
+            result.coordinates = crd
 
     return result
 
@@ -83,7 +118,7 @@ def get_dipole_from_arc(fp):
 def main():
     import sys
     import json
-    json.dump(parse_output(sys.stdin), sys.stdout, separators=(',', ':'))
+    json.dump(parse_output(sys.stdin).to_object(), sys.stdout, separators=(",", ":"))
 
 
 if __name__ == "__main__":

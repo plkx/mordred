@@ -21,6 +21,7 @@ requirements:
 
     - setuptools
     - pyyaml
+    - mopac7
 
   run:
     - python
@@ -30,6 +31,7 @@ requirements:
     - rdkit
     - enum34 [py27]
     - tqdm
+    - mopac7
 
 test:
   imports:

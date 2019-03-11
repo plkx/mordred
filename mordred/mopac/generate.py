@@ -5,12 +5,12 @@ def generate_mopac_input(mol, fp, condition="PM3 MMOK", confId=-1):
     fc = Chem.GetFormalCharge(mol)
     conf = mol.GetConformer(confId)
     with fp:
-        print(" ".join(condition.split("\n")) + " XYZ CHARGE={}\n\n".format(fc), file=fp)
+        fp.write(" ".join(condition.split("\n")) + " XYZ CHARGE={}\n\n\n".format(fc))
         for i in range(mol.GetNumAtoms()):
             a = mol.GetAtomWithIdx(i)
             f = int(not (a.GetBoolProp("Fixed") if a.HasProp("Fixed") else False))
             x, y, z = conf.GetAtomPosition(i)
-            print('{} {} {} {} {} {} {}'.format(a.GetSymbol(), x, f, y, f, z, f), file=fp)
+            fp.write("{} {} {} {} {} {} {}\n".format(a.GetSymbol(), x, f, y, f, z, f))
 
 
 def main():
