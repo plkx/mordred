@@ -8,6 +8,7 @@ regexes = [
     ("ionization_potential", float, re.compile(r"\s*IONIZATION POTENTIAL\s*=\s*(-?[0-9.]+)")),
     ("num_of_filled_levels", int, re.compile(r"\s*NO. OF FILLED LEVELS\s*=\s*(-?[0-9.]+)")),
 ]
+dipole_re = re.compile(r"^ SUM +(?:-?[0-9.]+) +(?:-?[0-9.]+) +(?:-?[0-9.]+) +(-?[0-9.]+)")
 
 
 class Result(object):
@@ -57,7 +58,7 @@ def skip(n, it):
         next(it)
 
 
-def parse_output(fp, eigenvalues=True, coordinates=True):
+def parse_output(fp):
     i = 0
     result = Result()
 
@@ -72,47 +73,40 @@ def parse_output(fp, eigenvalues=True, coordinates=True):
                 if i >= len(regexes):
                     break
 
-        if eigenvalues:
-            skip_to("EIGENVALUES", it)
-            skip(1, it)
+        skip_to("EIGENVALUES", it)
+        skip(1, it)
 
-            evs = []
-            for line in it:
-                line = line.rstrip()
-                if not line:
-                    break
+        evs = []
+        for line in it:
+            line = line.rstrip()
+            if not line:
+                break
 
-                for i in range(int(len(line) // 10)):
-                    evs.append(float(line[10 * i:10 * (i + 1)]))
+            for i in range(int(len(line) // 10)):
+                evs.append(float(line[10 * i:10 * (i + 1)]))
 
-            result.eigenvalues = evs
+        result.eigenvalues = evs
 
-        if coordinates:
-            skip_to("CARTESIAN COORDINATES", it)
-            skip(3, it)
+        skip_to("DIPOLE           X         Y         Z       TOTAL", it)
+        skip(2, it)
+        matched = dipole_re.match(next(it))
+        if matched is not None:
+            result.dipole = float(matched.group(1))
 
-            crd = []
-            for line in it:
-                line = line.rstrip()
-                if not line:
-                    break
+        skip_to("CARTESIAN COORDINATES", it)
+        skip(3, it)
 
-                crd.append([float(line[30:40]), float(line[40:50]), float(line[50:60])])
+        crd = []
+        for line in it:
+            line = line.rstrip()
+            if not line:
+                break
 
-            result.coordinates = crd
+            crd.append([float(line[30:40]), float(line[40:50]), float(line[50:60])])
+
+        result.coordinates = crd
 
     return result
-
-
-re_dipole = re.compile(r"\s*DIPOLE\s*=\s*(-?[0-9.]+)")
-
-
-def get_dipole_from_arc(fp):
-    with fp:
-        for line in fp:
-            matched = re_dipole.match(line)
-            if matched:
-                return float(matched.group(1))
 
 
 def main():

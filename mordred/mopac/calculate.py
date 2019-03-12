@@ -9,7 +9,7 @@ from io import StringIO
 
 from rdkit.Chem import rdForceFieldHelpers
 
-from .parser import parse_output, get_dipole_from_arc
+from .parser import parse_output
 from .generate import generate_mopac_internal_input
 
 try:
@@ -69,15 +69,12 @@ def calculate(mol, condition="PM3 XYZ MMOK", confId=-1, timeout=None, executable
             stdout = run_process([executable], cwd=d, timeout=timeout, env={
                 "FOR005": "mol.dat",
                 "FOR006": "mol.out",
-                "FOR012": "mol.arc",
             })
             result = parse_output(
                 open(os.path.join(d, "mol.out"), "r")
                 if len(stdout.strip()) == 0
                 else StringIO(stdout.decode("UTF-8")),
             )
-
-            result.dipole = get_dipole_from_arc(open(os.path.join(d, "mol.arc"), "r"))
 
     conf = mol.GetConformer(confId)
     for i, xyz in enumerate(result.coordinates):
