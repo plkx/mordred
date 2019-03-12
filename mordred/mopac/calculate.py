@@ -72,7 +72,7 @@ def calculate(mol, condition="PM3 XYZ MMOK", confId=-1, timeout=None, executable
                 "FOR012": "mol.arc",
             })
             result = parse_output(
-                open("mol.out", "r")
+                open(os.path.join(d, "mol.out"), "r")
                 if len(stdout.strip()) == 0
                 else StringIO(stdout.decode("UTF-8")),
             )
