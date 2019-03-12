@@ -37,6 +37,10 @@ def run_process(cmd, timeout=None, **args):
         o = subprocess.run(
             cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
             timeout=timeout, **args)
+
+        if o.returncode != 0:
+            raise RuntimeError("MOPAC exit with {}".format(o.returncode))
+
         return o.stdout
     else:
         null = open(os.devnull, "w")
@@ -45,6 +49,10 @@ def run_process(cmd, timeout=None, **args):
         th.start()
         stdout, _ = proc.communicate()
         th.cancel()
+
+        if proc.returncode != 0:
+            raise RuntimeError("MOPAC exit with {}".format(o.returncode))
+
         return stdout
 
 
@@ -58,11 +66,17 @@ def calculate(mol, condition="PM3 XYZ MMOK", confId=-1, timeout=None, executable
     with TemporaryDirectory() as d:
         with open(os.path.join(d, "mol.dat"), "w") as i:
             generate_mopac_internal_input(mol, i, condition=condition, confId=confId)
-            raw_result = run_process([executable], cwd=d, timeout=timeout, env={
+            stdout = run_process([executable], cwd=d, timeout=timeout, env={
                 "FOR005": "mol.dat",
+                "FOR006": "mol.out",
                 "FOR012": "mol.arc",
             })
-            result = parse_output(StringIO(raw_result.decode("UTF-8")))
+            result = parse_output(
+                open("mol.out", "r")
+                if len(stdout.strip()) == 0
+                else StringIO(stdout.decode("UTF-8"))
+            )
+
             result.dipole = get_dipole_from_arc(open(os.path.join(d, "mol.arc"), "r"))
 
     conf = mol.GetConformer(confId)
