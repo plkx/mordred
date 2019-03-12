@@ -1,15 +1,17 @@
 from __future__ import print_function
 
+import shutil
 import os
 import sys
 import time
 import threading
 import subprocess
+from io import StringIO
 
 from rdkit.Chem import rdForceFieldHelpers
 
 from .parser import parse_output, get_dipole_from_arc
-from .generate import generate_mopac_input
+from .generate import generate_mopac_internal_input
 
 try:
     from tempfile import TemporaryDirectory
@@ -18,29 +20,26 @@ except ImportError:
 
 
 def get_mopac_path():
-    if sys.platform.startswith("win"):
-        return "MOPAC_7.1.exe"
-    else:
-        return "run_mopac7"
+    return shutil.which("mopac7")
 
 
 def sentinel(proc):
     proc.kill()
 
 
-def run_process(cmd, cwd=None, timeout=None):
+def run_process(cmd, timeout=None, **args):
     v = sys.version_info.major, sys.version_info.minor
     if v >= (3, 5):
-        subprocess.run(
-            cmd, cwd=cwd, stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL, timeout=timeout)
+        o = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=timeout, **args)
+        return o.stdout
     else:
         null = open(os.devnull, "w")
-        proc = subprocess.Popen(cmd, cwd=cwd, stdout=null, stderr=null)
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=null, **args)
         th = threading.Timer(timeout, sentinel, args=(proc,))
         th.start()
-        proc.wait()
+        stdout, _ = proc.communicate()
         th.cancel()
+        return stdout
 
 
 def calculate(mol, condition="PM3 XYZ MMOK", confId=-1, timeout=None, executable=None):
@@ -52,9 +51,12 @@ def calculate(mol, condition="PM3 XYZ MMOK", confId=-1, timeout=None, executable
 
     with TemporaryDirectory() as d:
         with open(os.path.join(d, "mol.dat"), "w") as i:
-            generate_mopac_input(mol, i, condition=condition, confId=confId)
-            run_process([executable, "mol"], cwd=d, timeout=timeout)
-            result = parse_output(open(os.path.join(d, "mol.OUT"), "r"))
+            generate_mopac_internal_input(mol, i, condition=condition, confId=confId)
+            raw_result = run_process([executable], cwd=d, timeout=timeout, env={
+                "FOR005": "mol.dat",
+                "FOR012": "mol.arc",
+            })
+            result = parse_output(StringIO(raw_result.decode("UTF-8")))
             result.dipole = get_dipole_from_arc(open(os.path.join(d, "mol.arc"), "r"))
 
     conf = mol.GetConformer(confId)
