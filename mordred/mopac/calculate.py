@@ -36,8 +36,7 @@ def run_process(cmd, timeout=None, **args):
     if v >= (3, 5):
         o = subprocess.run(
             cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-            timeout=timeout, **args,
-        )
+            timeout=timeout, **args)
         return o.stdout
     else:
         null = open(os.devnull, "w")
