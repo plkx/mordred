@@ -74,7 +74,7 @@ def calculate(mol, condition="PM3 XYZ MMOK", confId=-1, timeout=None, executable
             result = parse_output(
                 open("mol.out", "r")
                 if len(stdout.strip()) == 0
-                else StringIO(stdout.decode("UTF-8"))
+                else StringIO(stdout.decode("UTF-8")),
             )
 
             result.dipole = get_dipole_from_arc(open(os.path.join(d, "mol.arc"), "r"))
