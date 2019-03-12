@@ -20,7 +20,11 @@ except ImportError:
 
 
 def get_mopac_path():
-    return shutil.which("mopac7")
+    e = shutil.which("mopac7")
+    if e is not None:
+        return e
+
+    return shutil.which("mopac7", path=os.environ["PATH"])
 
 
 def sentinel(proc):
