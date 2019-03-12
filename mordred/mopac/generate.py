@@ -1,5 +1,5 @@
-from rdkit import Chem
 import numpy as np
+from rdkit import Chem
 
 
 def distance(i, j):
@@ -9,7 +9,8 @@ def distance(i, j):
 def angle(i, j, k):
     rij = i - j
     rkj = k - j
-    return np.arccos(np.clip(rij.dot(rkj) / (np.linalg.norm(rij) * np.linalg.norm(rkj)), -1, 1)) / np.pi * 180
+    n = rij.dot(rkj) / (np.linalg.norm(rij) * np.linalg.norm(rkj))
+    return np.arccos(np.clip(n, -1, 1)) / np.pi * 180
 
 
 def dihedral(i, j, k, l):
@@ -19,21 +20,44 @@ def dihedral(i, j, k, l):
     cijk = np.cross(rij, rkj)
     cjkl = np.cross(rkj, rkl)
     s = np.sign(rkj.dot(np.cross(cijk, cjkl)))
-    return s * np.arccos(np.clip(cijk.dot(cjkl) / (np.linalg.norm(cijk) * np.linalg.norm(cjkl)), -1, 1)) / np.pi * 180
+    n = cijk.dot(cjkl) / (np.linalg.norm(cijk) * np.linalg.norm(cjkl))
+    return s * np.arccos(np.clip(n, -1, 1)) / np.pi * 180
 
 
 def internal(mol, confId=-1):
     conf = mol.GetConformer(confId)
-    it = zip(mol.GetAtoms(), (np.array(conf.GetAtomPosition(i)) for i in range(conf.GetNumAtoms())))
-    atm1, crd1 = next(it)
+    it = zip(
+        mol.GetAtoms(),
+        (np.array(conf.GetAtomPosition(i)) for i in range(conf.GetNumAtoms())),
+    )
+
+    try:
+        atm1, crd1 = next(it)
+    except StopIteration:
+        return
+
     yield atm1, (0., 0., 0.), (0, 0, 0)
-    atm2, crd2 = next(it)
+
+    try:
+        atm2, crd2 = next(it)
+    except StopIteration:
+        return
+
     yield atm2, (distance(crd2, crd1), 0., 0.), (1, 0, 0)
-    atm3, crd3 = next(it)
+
+    try:
+        atm3, crd3 = next(it)
+    except StopIteration:
+        return
+
     yield atm3, (distance(crd3, crd1), angle(crd3, crd1, crd2), 0.), (1, 2, 0)
 
     for atmN, crdN in it:
-        yield atmN, (distance(crdN, crd1), angle(crdN, crd1, crd2), dihedral(crdN, crd1, crd2, crd3)), (1, 2, 3)
+        yield (
+            atmN,
+            (distance(crdN, crd1), angle(crdN, crd1, crd2), dihedral(crdN, crd1, crd2, crd3)),
+            (1, 2, 3),
+        )
 
 
 def generate_mopac_cartesian_input(mol, fp, condition="PM3 MMOK", confId=-1):

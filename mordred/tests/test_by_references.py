@@ -58,7 +58,8 @@ def test_by_references():
                         assert isinstance(a, MissingValueBase)
                         return
 
-                    assert not isinstance(a, MissingValueBase), "desired: {}, actual: {}".format(d, a)
+                    assert not isinstance(a, MissingValueBase),\
+                        "desired: {}, actual: {}".format(d, a)
 
                     assert_almost_equal(a, d, digit, m)
 

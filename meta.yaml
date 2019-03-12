@@ -19,6 +19,7 @@ requirements:
     - rdkit
     - enum34 [py27]
     - backports.tempfile [py27]
+    - backports.shutil_which [py27]
 
     - setuptools
     - pyyaml
@@ -32,6 +33,7 @@ requirements:
     - rdkit
     - enum34 [py27]
     - backports.tempfile [py27]
+    - backports.shutil_which [py27]
     - tqdm
     - mopac7
 

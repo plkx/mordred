@@ -1,6 +1,5 @@
 from __future__ import print_function
 
-import shutil
 import os
 import sys
 import time
@@ -18,13 +17,14 @@ try:
 except ImportError:
     from backports.tempfile import TemporaryDirectory
 
+try:
+    from shutil import which
+except ImportError:
+    from backports.shutil_which import which
+
 
 def get_mopac_path():
-    e = shutil.which("mopac7")
-    if e is not None:
-        return e
-
-    return shutil.which("mopac7", path=os.environ["PATH"])
+    return which("mopac7")
 
 
 def sentinel(proc):
@@ -34,7 +34,10 @@ def sentinel(proc):
 def run_process(cmd, timeout=None, **args):
     v = sys.version_info.major, sys.version_info.minor
     if v >= (3, 5):
-        o = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=timeout, **args)
+        o = subprocess.run(
+            cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            timeout=timeout, **args,
+        )
         return o.stdout
     else:
         null = open(os.devnull, "w")
