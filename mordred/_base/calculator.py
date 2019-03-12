@@ -7,9 +7,9 @@ from contextlib import contextmanager
 from multiprocessing import cpu_count
 from distutils.version import StrictVersion
 
-from .result import Result
 from .._util import Capture, DummyBar
 from ..error import Error, Missing, MultipleFragments, DuplicatedDescriptorName
+from .result import Result
 from .context import Context
 from .descriptor import Descriptor, MissingValueException, is_descriptor_class
 

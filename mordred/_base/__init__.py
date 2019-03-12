@@ -1,8 +1,8 @@
 """Mordred base package."""
 
 from .util import is_missing
-from .result import Result
 from ..error import MissingValueBase
+from .result import Result
 from .parallel import parallel
 from .calculator import Calculator, get_descriptors_in_module, get_descriptors_from_module
 from .descriptor import (

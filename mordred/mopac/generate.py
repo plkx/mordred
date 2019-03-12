@@ -26,10 +26,10 @@ def dihedral(i, j, k, l):
 
 def internal(mol, confId=-1):
     conf = mol.GetConformer(confId)
-    it = zip(
+    it = iter(zip(
         mol.GetAtoms(),
         (np.array(conf.GetAtomPosition(i)) for i in range(conf.GetNumAtoms())),
-    )
+    ))
 
     try:
         atm1, crd1 = next(it)
