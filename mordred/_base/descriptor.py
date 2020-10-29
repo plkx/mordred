@@ -9,10 +9,13 @@ import numpy as np
 from rdkit import Chem
 
 if hasattr(inspect, "getfullargspec"):
+
     def getargs(func):
         return tuple(inspect.getfullargspec(func).args[1:])
 
+
 else:
+
     def getargs(func):
         try:
             return tuple(inspect.getargspec(func).args[1:])
@@ -183,6 +186,10 @@ class Descriptor(six.with_metaclass(DescriptorMeta, object)):
         return self._context.get_mol(self)
 
     @property
+    def config(self):
+        return self._context.config
+
+    @property
     def coord(self):
         """Get 3D coordinate.
 
@@ -241,7 +248,9 @@ class Descriptor(six.with_metaclass(DescriptorMeta, object)):
             if not isinstance(other, Descriptor):
                 other = ConstDescriptor(other)
 
-            return BinaryOperatingDescriptor(name.format(self, other), operator, self, other)
+            return BinaryOperatingDescriptor(
+                name.format(self, other), operator, self, other
+            )
 
         return binary
 
@@ -301,19 +310,20 @@ class UnaryOperatingDescriptor(Descriptor):
         self._value = value
 
     def _to_json(self):
-        return self.__class__.__name__, {
-            "name": self._name,
-            "operator": self._operator,
-            "value": self._value.to_json(),
-        }
+        return (
+            self.__class__.__name__,
+            {
+                "name": self._name,
+                "operator": self._operator,
+                "value": self._value.to_json(),
+            },
+        )
 
     def __str__(self):
         return self._name
 
     def dependencies(self):
-        return {
-            "value": self._value,
-        }
+        return {"value": self._value}
 
     def calculate(self, value):
         return self._fn(value)
@@ -353,12 +363,15 @@ class BinaryOperatingDescriptor(Descriptor):
     }
 
     def _to_json(self):
-        return self.__class__.__name__, {
-            "name": self._name,
-            "operator": self._operator,
-            "left": self._left.to_json(),  # noqa: S001
-            "right": self._right.to_json(),
-        }
+        return (
+            self.__class__.__name__,
+            {
+                "name": self._name,
+                "operator": self._operator,
+                "left": self._left.to_json(),  # noqa: S001
+                "right": self._right.to_json(),
+            },
+        )
 
     def parameters(self):
         return self._name, self._operator, self._left, self._right
@@ -374,10 +387,7 @@ class BinaryOperatingDescriptor(Descriptor):
         return self._name
 
     def dependencies(self):
-        return {
-            "left": self._left,
-            "right": self._right,
-        }
+        return {"left": self._left, "right": self._right}
 
     def calculate(self, left, right):
         return self._fn(left, right)
